@@ -29,16 +29,6 @@ func (c *Context) Fail(code int, err error) {
 }
 
 func (c *Context) Error(code int, err error) {
-	// c.errors = append(c.errors, err)
 	c.Response.WriteHeader(code)
 	c.Response.Write([]byte(err.Error()))
-}
-
-func (c *Context) LastError() error {
-	s := len(c.errors)
-	if s > 0 {
-		return c.errors[s-1]
-	} else {
-		return nil
-	}
 }

@@ -25,7 +25,6 @@ type Context struct {
 	// context holdings
 	Data     map[string]interface{}
 	Handlers []Handler
-	errors   []error
 
 	// bookkeeping
 	handlerIndex int
