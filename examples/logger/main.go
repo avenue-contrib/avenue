@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 
-	"avenue"
-	"avenue/context"
-	"avenue/logging"
+	"github.com/avenue-contrib/avenue"
+	"github.com/avenue-contrib/avenue/context"
+	"github.com/avenue-contrib/avenue/logging"
 )
 
 func main() {

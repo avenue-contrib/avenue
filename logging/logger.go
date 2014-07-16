@@ -4,7 +4,7 @@ import (
 	"log"
 	"time"
 
-	"avenue/context"
+	"github.com/avenue-contrib/avenue/context"
 
 	"github.com/mgutz/ansi"
 )

@@ -1,8 +1,8 @@
 package main
 
 import (
-	"avenue"
-	"avenue/context"
+	"github.com/avenue-contrib/avenue"
+	"github.com/avenue-contrib/avenue/context"
 )
 
 func main() {

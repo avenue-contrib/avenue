@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"path"
 
-	"avenue/context"
+	"github.com/avenue-contrib/avenue/context"
 
 	"github.com/julienschmidt/httprouter"
 )

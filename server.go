@@ -7,8 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"avenue/context"
-	"avenue/mux"
+	"github.com/avenue-contrib/avenue/context"
+	"github.com/avenue-contrib/avenue/mux"
 )
 
 type Server struct {
