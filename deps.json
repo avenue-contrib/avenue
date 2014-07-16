@@ -1,0 +1,12 @@
+{
+    "ansi": {
+        "repo": "github.com/mgutz/ansi",
+        "version": "master",
+        "type": "git"
+    },
+    "httprouter": {
+        "repo": "github.com/julienschmidt/httprouter",
+        "version": "master",
+        "type": "git"
+    }
+}
