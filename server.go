@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/avenue-contrib/avenue/context"
 	"github.com/avenue-contrib/avenue/mux"
@@ -62,6 +63,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 
 func (s *Server) Run(addr string) {
 	log.Printf("Listening on: %s\n\n", addr)
+	wrap := &http.Server{
+		Addr:         addr,
+		Handler:      s,
+		ReadTimeout:  time.Second * 2,
+		WriteTimeout: time.Second * 2,
+	}
 
-	http.ListenAndServe(addr, s)
+	err := wrap.ListenAndServe()
+	panic(err)
 }
