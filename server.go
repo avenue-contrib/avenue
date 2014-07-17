@@ -5,11 +5,17 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/avenue-contrib/avenue/context"
 	"github.com/avenue-contrib/avenue/mux"
+)
+
+var (
+	SignalChan chan os.Signal = make(chan os.Signal, 1)
 )
 
 type Server struct {
@@ -70,6 +76,24 @@ func (s *Server) Run(addr string) {
 		WriteTimeout: time.Second * 2,
 	}
 
+	watchSignals()
 	err := wrap.ListenAndServe()
 	panic(err)
+}
+
+func watchSignals() {
+	signal.Notify(SignalChan, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGUSR1)
+	go func() {
+		for {
+			sig := <-SignalChan
+			switch sig {
+			case syscall.SIGINT, syscall.SIGKILL:
+				log.Printf("Halting due to: %s\n", sig)
+				os.Exit(1)
+			case syscall.SIGTERM, syscall.SIGUSR1:
+				log.Println("Starting graceful shutdown")
+				os.Exit(0)
+			}
+		}
+	}()
 }
