@@ -3,10 +3,12 @@ package avenue
 import (
 	"errors"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -14,18 +16,36 @@ import (
 	"github.com/avenue-contrib/avenue/mux"
 )
 
-var (
-	SignalChan chan os.Signal = make(chan os.Signal, 1)
-)
-
 type Server struct {
 	mux.Mux
+	http.Server
+	listener  net.Listener
+	signal    chan os.Signal
+	OpenConns sync.WaitGroup
+}
+
+type tcpKeepAliveListener struct {
+	*net.TCPListener
+}
+
+func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
+	tc, err := ln.AcceptTCP()
+	if err != nil {
+		return
+	}
+	tc.SetKeepAlive(true)
+	tc.SetKeepAlivePeriod(3 * time.Minute)
+	return tc, nil
 }
 
 func New() *Server {
 	m := mux.New("/")
 	return &Server{
 		m,
+		http.Server{},
+		nil,
+		make(chan os.Signal, 1),
+		sync.WaitGroup{},
 	}
 }
 
@@ -67,33 +87,64 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	s.Router().ServeHTTP(context.Wrap(w), req)
 }
 
-func (s *Server) Run(addr string) {
+func (s *Server) Run(addr string) error {
 	log.Printf("Listening on: %s\n\n", addr)
-	wrap := &http.Server{
-		Addr:         addr,
-		Handler:      s,
-		ReadTimeout:  time.Second * 2,
-		WriteTimeout: time.Second * 2,
-	}
+	s.Addr = addr
+	s.Handler = s
+	s.ReadTimeout = time.Second * 2
+	s.WriteTimeout = time.Second * 2
+	s.ConnState = s.ConnHandler
 
-	watchSignals()
-	err := wrap.ListenAndServe()
-	panic(err)
+	go s.watchSignals()
+
+	if s.Addr == "" {
+		s.Addr = ":http"
+	}
+	ln, err := net.Listen("tcp", s.Addr)
+	if err != nil {
+		panic(err)
+	}
+	s.listener = tcpKeepAliveListener{ln.(*net.TCPListener)}
+	return s.Serve(s.listener)
 }
 
-func watchSignals() {
-	signal.Notify(SignalChan, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGUSR1)
-	go func() {
-		for {
-			sig := <-SignalChan
-			switch sig {
-			case syscall.SIGINT, syscall.SIGKILL:
-				log.Printf("Halting due to: %s\n", sig)
-				os.Exit(1)
-			case syscall.SIGTERM, syscall.SIGUSR1:
-				log.Println("Starting graceful shutdown")
-				os.Exit(0)
-			}
+func (s *Server) ConnHandler(conn net.Conn, state http.ConnState) {
+	switch state {
+	case http.StateNew:
+		s.OpenConns.Add(1)
+	case http.StateIdle:
+		log.Println("Idling")
+	case http.StateHijacked, http.StateClosed:
+		s.OpenConns.Done()
+	}
+}
+
+func (s *Server) GracefulShutdown(restart bool) {
+	// shutdown keep-alives
+	s.SetKeepAlivesEnabled(false)
+	s.OpenConns.Wait()
+	s.listener.Close()
+
+	if restart {
+		log.Println("Restarting....")
+		// start another process
+		// for now, program will terminate unless other locks held
+	} else {
+		log.Println("Terminating...")
+	}
+}
+
+func (s *Server) watchSignals() {
+	signal.Notify(s.signal, syscall.SIGINT, syscall.SIGKILL, syscall.SIGTERM, syscall.SIGUSR1)
+	for {
+		sig := <-s.signal
+		switch sig {
+		case syscall.SIGINT, syscall.SIGKILL:
+			log.Printf("Halting due to: %s\n", sig)
+			s.listener.Close()
+		case syscall.SIGTERM, syscall.SIGUSR1:
+			log.Println("Starting graceful shutdown")
+			s.GracefulShutdown(sig == syscall.SIGUSR1)
 		}
-	}()
+	}
 }

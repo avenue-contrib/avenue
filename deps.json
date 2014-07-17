@@ -6,7 +6,7 @@
     },
     "httprouter": {
         "repo": "github.com/julienschmidt/httprouter",
-        "version": "master",
+        "version": "7deadb6844d2c6ff1dfb812eaa439b87cdaedf20",
         "type": "git"
     }
 }
